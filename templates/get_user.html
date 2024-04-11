@@ -1,0 +1,13 @@
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title> Get user </title>
+    </head>
+    <body>
+        <form action="{{ url_for('get_user') }}" method="post">
+            <div class="msg">{{ msg }}</div>
+            <input id="username" name="username" type="text" placeholder="Enter Username" class="textbox"/></br></br>
+            <input type="submit" class="btn" value="Get user"></br>
+        </form>
+    </body>
+</html>
