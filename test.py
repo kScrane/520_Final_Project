@@ -1,4 +1,4 @@
-from Log_in import *
+from handle_users import *
 import hashlib
 
 def test_create_users():
@@ -53,4 +53,8 @@ def create_root():
 
 print_values()
 r = get_user('admin')
-print(r[0][2])
+r = delete_user("asdfa")
+print(r)
+r = get_user("asdfaweferg")
+print(r)
+print(r)

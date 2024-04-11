@@ -1,5 +1,5 @@
 import socket
-from Log_in import *
+import handle_users
 from flask import Flask, render_template, request, redirect, url_for
 from functools import wraps
 from flask import session
@@ -19,6 +19,16 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def basic_user_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if session.get('username') is None or session.get('logged_in') is False:
+            return redirect('/login',code=302)
+        elif session.get('admin') is True:
+            return redirect('/admin_homepage',code=302)
+        return f(*args, **kwargs)
+    return decorated_function
+
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -27,33 +37,33 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-@app.route('/signup', methods = ['GET', 'POST'])  # decorator for route(argument) function
+@app.route('/signup', methods = ['GET', 'POST'])  
 def sign_up():
     msg = ''
     if request.method == 'POST' and 'username' in request.form and 'password' in request.form:
         username = request.form['username']
         password = request.form['password']
-        r = create_user(username, password, 0)
+        r = handle_users.create_user(username, password, 0)
         if (r == 1):
             msg = "Account created successfully"
-            print_values()
+            handle_users.print_values()
         else:
             msg = "Error creating account"
     return render_template('signup.html', msg = msg)
 
-@app.route('/login', methods = ['GET', 'POST'])  # decorator for route(argument) function
-def log_in():  # binding to hello_admin call
+@app.route('/login', methods = ['GET', 'POST']) 
+def log_in():  
     msg = ''
     if request.method == 'POST' and 'username' in request.form and 'password' in request.form:
         username = request.form['username']
         password = request.form['password']
-        r = login_user(username, password)
+        r = handle_users.login_user(username, password)
         if (r == 1):
             session['logged_in'] = True
             session['username'] = username
             session['admin'] = False
             msg = "Log in successful"
-            if(is_admin(username) == 1):
+            if(handle_users.is_admin(username) == 1):
                 session['admin'] = True
                 return redirect(url_for("admin_homepage"))
             return redirect(url_for('home_page'))
@@ -66,36 +76,40 @@ def log_in():  # binding to hello_admin call
 def log_out():
     session.pop('logged_in', None)
     session.pop('username', None)
+    session.pop('admin', None)
     return redirect(url_for('log_in'))
 
-@app.route('/deleteUser')
+@app.route('/deleteUser', methods = ['GET', 'POST'])
 @admin_required
 def delete_user():
     msg = ''
     if request.method == 'POST' and 'username' in request.form:
         username = request.form['username']
-        r = delete_user(username)
+        r = handle_users.delete_user(username)
         if (r == 1):
             msg = "Delete user successful"
         else:
-            msg = "Error logging in"
+            msg = "Error deleting user"
     return render_template('delete_user.html', msg = msg)
 
-@app.route('/getUser')
+@app.route('/getUser', methods = ['GET', 'POST'])
 @admin_required
 def get_user():
     msg = ''
+    user = ''
     if request.method == 'POST' and 'username' in request.form:
         username = request.form['username']
-        r = get_user(username)
-        if (r != []):
-            msg = "Get user successful: " + r
+        r = handle_users.get_user(username)
+        if (r != None):
+            r = r[0]
+            msg = "Get user successful" 
+            user = "user: ", r[0], "is admin: ", r[2]
         else:
             msg = "Error getting user"
-    return render_template('get_user.html', msg = msg)
+    return render_template('get_user.html', msg = msg, user = user)
 
 @app.route("/homepage")
-@login_required
+@basic_user_required
 def home_page():
     return render_template('homepage.html') 
 
@@ -104,20 +118,13 @@ def home_page():
 def admin_homepage():
     return render_template('admin_homepage.html')  
 
-
-"""
 #TODO: Allow file uploads, save to folder
-@app.route('/upload')
-def upload_file():
-    return render_template('upload.html')
-
-@app.route('/uploader', methods=['GET', 'POST'])
-def upload_file():
-    if request.method == 'POST':
-      f = request.files['file'] 
-      #TODO: secure filename f.save(secure_filename(f.filename)) 
-      return 'file uploaded successfully'
-"""
+@app.route('/fileupload', methods = ['POST'])   
+def file_uploaded():   
+    if request.method == 'POST':   
+        f = request.files['file'] 
+        f.save(f.filename)   
+        return render_template("give_macros.html", name = f.filename)   
   
 if __name__=='__main__': 
    app.secret_key = 'your secret key'

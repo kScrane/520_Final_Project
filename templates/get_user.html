@@ -6,8 +6,11 @@
     <body>
         <form action="{{ url_for('get_user') }}" method="post">
             <div class="msg">{{ msg }}</div>
+            <div class="user">{{ user }}</div>
             <input id="username" name="username" type="text" placeholder="Enter Username" class="textbox"/></br></br>
             <input type="submit" class="btn" value="Get user"></br>
         </form>
+        <a href="{{ url_for('log_out') }}">Log Out</a>
+        <a href="{{ url_for('admin_homepage') }}">Back</a>
     </body>
 </html>

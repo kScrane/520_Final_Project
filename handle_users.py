@@ -78,12 +78,18 @@ def create_user(username, password, admin):
         return 1
 
 def delete_user(username):
+    deleted = 0
     con = sqlite3.connect("user_databse.db")
     cur = con.cursor()
-    cur.execute("DELETE FROM users WHERE username = ?", (username,))
-    con.commit()
+    cur.execute("SELECT * FROM users WHERE username = ?", (username,))
+    user = cur.fetchall()
+    print(user)
+    if user:
+        cur.execute("DELETE FROM users WHERE username = ?", (username,))
+        con.commit()
+        deleted = 1
     con.close()
-    return 1
+    return deleted
 
 def get_user(username):
     con = sqlite3.connect("user_databse.db")
@@ -91,11 +97,12 @@ def get_user(username):
     cur.execute("SELECT * FROM users WHERE username = ?", (username,))
     user = cur.fetchall()
     con.close()
-    if user != None: #Successful
+    if user: #Successful
         return user
     else: 
         user = None
     return user
+
 def is_admin(username):
     con = sqlite3.connect("user_databse.db")
     cur = con.cursor()
