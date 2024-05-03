@@ -1,0 +1,12 @@
+{% from 'bootstrap5/form.html' import render_form %}
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title> Create new user </title>
+    </head>
+    <body>
+        {{msg}}
+        {{ render_form(form) }}
+        <a href="{{ url_for('admin_homepage') }}">Back</a>
+    </body>
+</html>

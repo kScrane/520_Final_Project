@@ -1,10 +1,11 @@
 <html>
     <head>
         <meta charset="UTF-8">
-        <title> Home page </title>
+        <title> Dr. Ment Homepage </title>
     </head>
     <body>
-        {{session.username}}
+        <p> Welcome back {{session.username}}!</p>
+        <p> {{session.organization}}</p>
         <form action = "/fileupload" method = "post" enctype="multipart/form-data">   
             <input type="file" name="file" />   
             <input type = "submit" value="Upload">   

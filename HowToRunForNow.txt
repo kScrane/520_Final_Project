@@ -1,0 +1,6 @@
+I have a dynamodb running locally just for ease of use:
+java -Djava.library.path=/Users/sophiecrane/Documents/GitHub/520_Final_Project/dynamodb_local_latest/ -jar dynamodb_local_latest/DynamoDBLocal.jar -sharedDb
+
+Then you can start the server with:
+python3 Server.py
+

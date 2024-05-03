@@ -1,6 +1,15 @@
-import sqlite3
+
 import hashlib
 from create_database import *
+import boto3
+from boto3.dynamodb.conditions import Key, Attr
+dynamodb = boto3.client('dynamodb')
+
+db = boto3.resource('dynamodb', aws_access_key_id="xxx",
+                        aws_secret_access_key="xxx",
+                        region_name="us-east-1",
+                        endpoint_url="http://localhost:8000")
+
 """User authentication and authorization.
 There are two types of users: 
 - one uses the system   
@@ -12,105 +21,68 @@ default administrator has the privilege to add new administrators and users. Adm
 retrieve all users’ evaluations and compute the average score for each perspective across the
 entire user base or selected users"""
 
-def login_user(username, password):
-    con = sqlite3.connect("user_databse.db")
-    cur = con.cursor()
-    cur.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
-    if cur.fetchall():
-        con.close()
-        return 1
-    else:
-        con.close()
+def return_user_database():
+    return db.Table("Users")
+
+def create_user(username, password, organization="none", is_admin=0):
+    table = return_user_database()
+    #TODO: Check if username exists
+    #TODO: check if organization exists
+    if get_user(username) != 0:
+        print("User already exists")
         return 0
-
-def handle_login(c):
-    c.send("Input Username".encode())
-    username = c.recv(1024).decode()
-    c.send("Input Password".encode())
-    #TODO: Hash password on site
-    #password = c.recv(1024).decode()
-    password = c.recv(1024)
-    password = hashlib.sha256(password).hexdigest()
-    r = login_user(username, password)
-    if r == 1:
-        c.send("Successful".encode())
-    else:
-        c.send("Unsuccessful".encode())
-
-def print_values():
-    con = sqlite3.connect("user_databse.db")
-    # display row by row 
-    cursor = con.execute("SELECT * from users") 
-    for row in cursor: 
-        print(row)
-    # close the connection 
-    con.close() 
-
-def handle_create_user(c):
-    """Add user, password to user database
-    TODO: Only accessible to admins
-    """
-    c.send("Input Username".encode())
-    username = c.recv(1024).decode()
-    c.send("Input Password".encode())
-        #password = c.recv(1024).decode()
-    password = c.recv(1024)
-    password = hashlib.sha256(password).hexdigest()
-    r = create_user(username, password)
-    
-    if r == 0:
-        c.send("Unsuccessful - User already exists".encode())
-    else:
-        c.send("Successful".encode())
-    return
-
-def create_user(username, password, admin):
-    con = sqlite3.connect("user_databse.db")
-    cur = con.cursor()
-    cur.execute("SELECT * FROM users WHERE username = ?", (username,))
-    if cur.fetchall(): #Successful
-        con.close()
+    hashed_password = hashlib.sha256(password.encode('utf-8')).hexdigest()   
+    response = table.put_item(Item= {'username': username, 'password': hashed_password, 'organization': organization, 'is_admin': is_admin})
+    if get_user(username) == 0:
+        print("Error creating user")
         return 0
-    else: 
-        con.execute("INSERT INTO users VALUES(?, ?, ?)", (username, password, admin))
-        con.commit()
-        con.close()
-        return 1
+    return 1
+
+def create_new_org(organization):
+    #TODO: Figure how to save organizations
+    return 0
 
 def delete_user(username):
-    deleted = 0
-    con = sqlite3.connect("user_databse.db")
-    cur = con.cursor()
-    cur.execute("SELECT * FROM users WHERE username = ?", (username,))
-    user = cur.fetchall()
-    print(user)
-    if user:
-        cur.execute("DELETE FROM users WHERE username = ?", (username,))
-        con.commit()
-        deleted = 1
-    con.close()
-    return deleted
+    table = return_user_database()
+    response = table.get_item(Key={'username': username})
+    if 'Item' not in response:
+        print("User not present")
+        return 0
+    else:
+        print("User deleted")
+        response = table.delete_item(Key={'username': username})
+        return 1
 
 def get_user(username):
-    con = sqlite3.connect("user_databse.db")
-    cur = con.cursor()
-    cur.execute("SELECT * FROM users WHERE username = ?", (username,))
-    user = cur.fetchall()
-    con.close()
-    if user: #Successful
-        return user
-    else: 
-        user = None
-    return user
+    table = return_user_database()
+    response = table.get_item(Key={'username': username})
+    if 'Item' in response:
+        r = (response['Item']['username'], response['Item']['organization'], response['Item']['is_admin'])
+        print(r)
+        return r
+    else:
+        return 0
 
-def is_admin(username):
-    con = sqlite3.connect("user_databse.db")
-    cur = con.cursor()
-    cur.execute("SELECT * FROM users WHERE username = ?", (username,))
-    user = cur.fetchall()
-    con.close()
-    if user != None: #Successful
-        isAdmin = user[0][2]
-    else: 
-        isAdmin = 0
-    return isAdmin
+def login_user(username, password):
+    hashed_password = hashlib.sha256(password.encode('utf-8')).hexdigest()   
+    table = return_user_database()
+    response = table.query(
+        KeyConditionExpression=Key('username').eq(username),
+        FilterExpression=Attr('password').eq(hashed_password)
+    )
+    if response['Count'] == 1:
+        print("Successful login")
+        organization = response['Items'][0]['organization']
+        is_admin = response['Items'][0]['is_admin']
+        r = (organization, is_admin)
+        return r
+    else:
+        print("User doesn't exist")
+        return 0
+
+def print_values():
+    table = return_user_database()
+    users = table.scan()
+    data = users['Items']
+    for u in data:
+        print(u)
